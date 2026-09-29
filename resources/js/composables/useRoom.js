@@ -8,6 +8,8 @@ const KEY = Symbol('room');
 
 // Safety net in case a websocket message is missed.
 const FALLBACK_POLL_MS = { connected: 20000, disconnected: 3000 };
+// Without a websocket server at all (e.g. hosted on Vercel), polling is the only source of updates.
+const POLL_ONLY_MS = 2000;
 
 /**
  * Owns the live room state for the Room page: applies server responses,
@@ -71,7 +73,7 @@ export function provideRoom(initial) {
     let timer = null;
     function schedulePoll() {
         clearTimeout(timer);
-        const ms = connected.value ? FALLBACK_POLL_MS.connected : FALLBACK_POLL_MS.disconnected;
+        const ms = !window.Echo ? POLL_ONLY_MS : connected.value ? FALLBACK_POLL_MS.connected : FALLBACK_POLL_MS.disconnected;
         timer = setTimeout(async () => {
             if (!document.hidden) await refresh();
             schedulePoll();
@@ -88,18 +90,22 @@ export function provideRoom(initial) {
     const onVisible = () => { if (!document.hidden) refresh(); };
 
     onMounted(() => {
-        window.Echo.channel(`room.${code}`).listen('.updated', (e) => {
-            if (e.version > view.value.version) refresh();
-        });
-        pusher()?.connection.bind('state_change', onState);
-        connected.value = pusher()?.connection.state === 'connected';
+        if (window.Echo) {
+            window.Echo.channel(`room.${code}`).listen('.updated', (e) => {
+                if (e.version > view.value.version) refresh();
+            });
+            pusher()?.connection.bind('state_change', onState);
+            connected.value = pusher()?.connection.state === 'connected';
+        } else {
+            connected.value = true; // polling over HTTP is working as intended
+        }
         document.addEventListener('visibilitychange', onVisible);
         schedulePoll();
     });
 
     onBeforeUnmount(() => {
         clearTimeout(timer);
-        window.Echo.leave(`room.${code}`);
+        window.Echo?.leave(`room.${code}`);
         pusher()?.connection.unbind('state_change', onState);
         document.removeEventListener('visibilitychange', onVisible);
     });

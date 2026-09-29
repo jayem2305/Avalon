@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [HandleInertiaRequests::class]);
+        // Hosts like Vercel terminate HTTPS in front of the app; trust their
+        // forwarded headers so generated URLs (assets, redirects) use https.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Rule violations are expected: show them to the player, don't log them.
