@@ -1,0 +1,11 @@
+# This folder is a Laravel app, run with `composer run dev` or `composer run play`
+# (see README.md), not served by XAMPP's Apache. Stop Apache from exposing .env,
+# source code or vendor files. The old plain-PHP version stays at /avalon/_legacy/.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^_legacy(/|$) - [L]
+    RewriteRule ^ - [F]
+</IfModule>
+<IfModule !mod_rewrite.c>
+    Require all denied
+</IfModule>
